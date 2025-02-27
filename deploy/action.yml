@@ -36,12 +36,47 @@ inputs:
 outputs:
   app:
     description: A JSON representation of the entire app after the deployment.
+  url:
+    description: The URL to the newly deployed app.
   build_logs:
     description: The builds logs of the deployment.
   deploy_logs:
     description: The deploy logs of the deployment.
 
 runs:
-  using: docker
-  image: ../Dockerfile
-  args: ['deploy']
+  using: composite
+  steps:
+    - name: Cache
+      id: build-cache
+      uses: actions/cache@v4
+      with:
+        path: ./deploy
+        key: digitalocean-app-action.deploy-cache-${{ runner.os }}
+
+    - name: Build
+      if: steps.build-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        docker build -t digitalocean-app-action:latest "${{ github.action_path }}/../"
+        container_id=$(docker create digitalocean-app-action:latest)
+        docker cp $container_id:/usr/local/bin/deploy ./deploy
+        docker rm $container_id
+
+    - name: Make executable
+      if: steps.build-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        chmod +x ./deploy
+
+    - name: Run binary
+      shell: bash
+      env:
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_APP_SPEC_LOCATION: ${{ inputs.app_spec_location }}
+        INPUT_PROJECT_ID: ${{ inputs.project_id }}
+        INPUT_APP_NAME: ${{ inputs.app_name }}
+        INPUT_PRINT_BUILD_LOGS: ${{ inputs.print_build_logs }}
+        INPUT_PRINT_DEPLOY_LOGS: ${{ inputs.print_deploy_logs }}
+        INPUT_DEPLOY_PR_PREVIEW: ${{ inputs.deploy_pr_preview }}
+
+      run: ./deploy

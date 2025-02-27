@@ -26,6 +26,37 @@ inputs:
     default: 'false'
 
 runs:
-  using: docker
-  image: ../Dockerfile
-  args: ['delete']
+  using: composite
+  steps:
+    - name: Cache
+      id: build-cache
+      uses: actions/cache@v4
+      with:
+        path: ./delete
+        key: digitalocean-app-action.delete-cache-${{ runner.os }}
+
+    - name: Build
+      if: steps.build-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        docker build -t digitalocean-app-action:latest "${{ github.action_path }}/../"
+        container_id=$(docker create digitalocean-app-action:latest)
+        docker cp $container_id:/usr/local/bin/delete ./delete
+        docker rm $container_id
+
+    - name: Make executable
+      if: steps.build-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        chmod +x ./delete
+
+    - name: Run binary
+      shell: bash
+      env:
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_APP_ID: ${{ inputs.app_id }}
+        INPUT_APP_NAME: ${{ inputs.app_name }}
+        INPUT_FROM_PR_PREVIEW: ${{ inputs.from_pr_preview }}
+        INPUT_IGNORE_NOT_FOUND: ${{ inputs.ignore_not_found }}
+
+      run: ./delete

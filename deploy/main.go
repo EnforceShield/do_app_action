@@ -65,6 +65,7 @@ func main() {
 	if err != nil {
 		a.Fatalf("failed to deploy: %v", err)
 	}
+	a.SetOutput("url", string(app.GetLiveURL()))
 	a.Infof("App is now live under URL: %s", app.GetLiveURL())
 }
 
