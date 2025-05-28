@@ -59,7 +59,7 @@ services:
     type: SECRET
   github:
     branch: main
-    repo: digitalocean/sample-nodejs
+    repo: digitalocean/sample-golang
 ```
 
 The following action deploys the app whenever a new commit is pushed to the main branch. Note that `deploy_on_push` is **not** used here, since the Github Action is the driving force behind the deployment. Updates to `.do/app.yaml` will automatically be applied to the app.
@@ -104,10 +104,13 @@ services:
     registry_type: GHCR
     registry: YOUR_ORG
     repository: YOUR_REPO
+    registry_credentials: ${GHCR_CREDENTIALS}
     digest: ${SAMPLE_DIGEST}
 ```
 
 The following action builds a new image from a Dockerfile in the repository and deploys the respective app from it. The build in App Platform is automatically bypassed. The built image is deployed from its digest, avoiding any inconsistencies around mutable tags and guaranteeing that **exactly** this image is deployed.
+
+Similar to how we've passed the `SOME_SECRET_FROM_REPOSITORY` secret as an environment variable in the paragraph above, a secret of the repository, named for example `GHCR_CREDENTIALS` (which will have to be setup beforehand as well), can be passed to the app as [registry_credentials](https://docs.digitalocean.com/products/app-platform/how-to/deploy-from-container-images/#deploy-container-using-the-apps) to allow the deployment to pull the container image we're building, if the resulting image is private.
 
 ```yaml
 name: Build, Push and Deploy a Docker Image
@@ -143,6 +146,7 @@ jobs:
         uses: digitalocean/app_action/deploy@v2
         env:
           SAMPLE_DIGEST: ${{ steps.push.outputs.digest }}
+          GHCR_CREDENTIALS: ${{ secrets.GHCR_CREDENTIALS }}
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 ```
@@ -157,7 +161,7 @@ services:
 - name: sample
   github:
     branch: main
-    repo: digitalocean/sample-nodejs
+    repo: digitalocean/sample-golang
 ```
 
 The following 2 actions implement a "Preview Apps" feature, that provide a per-PR app to check if the deployment **would** work. If the deployment succeeds, a comment is posted with the live URL of the app. If the deployment fails, a link to the respective action run is posted alongside the build and deployment logs for quick debugging.
