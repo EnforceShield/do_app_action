@@ -36,12 +36,16 @@ inputs:
 outputs:
   app:
     description: A JSON representation of the entire app after the deployment.
+    value: ${{ steps.deploy.outputs.app }}
   url:
     description: The URL to the newly deployed app.
+    value: ${{ steps.deploy.outputs.url }}
   build_logs:
     description: The builds logs of the deployment.
+    value: ${{ steps.deploy.outputs.build_logs }}
   deploy_logs:
     description: The deploy logs of the deployment.
+    value: ${{ steps.deploy.outputs.deploy_logs }}
 
 runs:
   using: composite
@@ -69,6 +73,7 @@ runs:
         chmod +x ./deploy
 
     - name: Run binary
+      id: deploy
       shell: bash
       env:
         INPUT_TOKEN: ${{ inputs.token }}
